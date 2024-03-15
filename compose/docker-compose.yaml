@@ -1,0 +1,75 @@
+version: '3'
+
+services:
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-d" ,"postgres", "-U", "postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: "redis:7-alpine"
+    ports:
+      - "6379:6379"
+    command: redis-server --save 20 1 --loglevel warning  --requirepass eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81
+    volumes:
+      - redis_data:/var/lib/redis/data
+
+  booking-service:
+    image: ghcr.io/lovehotel24/booking-service:latest
+    environment:
+      - BOOK_PG_USER=postgres
+      - BOOK_PG_PASS=postgres
+      - BOOK_PG_HOST=postgres
+      - BOOK_PG_DB=postgres
+      - BOOK_PORT=8081
+      - BOOK_GRPC_PORT=50051
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  auth-service:
+    image: ghcr.io/lovehotel24/auth-service:latest
+    environment:
+      - AUTH_PG_HOST=postgres
+      - AUTH_PG_USER=postgres
+      - AUTH_PG_PASS=postgres
+      - AUTH_PG_DB=postgres
+      - AUTH_REDIS_HOST=redis
+      - AUTH_REDIS_PASS=eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81
+      - AUTH_ADM_PH=0612345678
+      - AUTH_ADM_PASS=topSecret
+      - AUTH_USR_PH=0912345678
+      - AUTH_USR_PASS=lowSecret
+      - AUTH_CLIENT_ID=666666
+      - AUTH_CLIENT_SECRET=9876543210
+      - AUTH_PORT=8080
+      - AUTH_GRPC_HOST=booking-service:50051
+    ports:
+      - "8080:8080"
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      booking-service:
+        condition: service_started
+
+
+volumes:
+  postgres-data:
+  redis_data:
