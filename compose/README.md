@@ -5,3 +5,5 @@
 ```shell
 docker-compose up
 ```
+
+note: Need to create a bucket in minio "http://localhost:9001" before upload the images.
